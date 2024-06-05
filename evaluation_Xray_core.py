@@ -96,7 +96,7 @@ def extract_surface_points_2D(mask, sample_size=10000):
 def calculate_sphere_radius_2D(mask):
     points = np.argwhere(mask)
     if points.size == 0:
-        return np.inf, np.inf  # Return inf if no points exist
+        return np.inf  # Return inf if no points exist
     center = np.mean(points, axis=0)
     radii = np.linalg.norm(points - center, axis=1)
     radius = np.max(radii)
@@ -130,8 +130,13 @@ def evaluate_anatomical_segmentation_2D(gt_mask, pred_mask):
             iou = calculate_2d_iou(gt_mask[label], pred_mask[label])
             gt_points = extract_surface_points_2D(gt_mask[label])
             pred_points = extract_surface_points_2D(pred_mask[label])
-            hd95 = calculate_2d_hd95_from_points(gt_points, pred_points)
-            assd = calculate_2d_assd_from_points(gt_points, pred_points)
+            if pred_points.size:
+                hd95 = calculate_2d_hd95_from_points(gt_points, pred_points)
+                assd = calculate_2d_assd_from_points(gt_points, pred_points)
+            else:
+                radius = calculate_sphere_radius_2D(gt_mask[label])
+                hd95 = 2 * radius
+                assd = radius
             results[bone_name[label]] = (iou, hd95, assd)
     return results
 
@@ -207,8 +212,7 @@ def evaluate_2d_single_case(gt_result, pred_result, verbose=False):
 
 
 if __name__ == "__main__":
-    pred_mask = load_mask_from_folder(location=Path(
-        "/media/yudi/5EE22D1BE22CF9432/datasets/PENGWIN_dataset/evaluation_code_2D/test/input/d86e547d-46eb-4b27-a3b6-b2cdb41167b6/output/images/pelvic-fracture-x-ray-segmentation"))
-    gt_mask = load_masks(
-        Path("/media/yudi/5EE22D1BE22CF9432/datasets/PENGWIN_dataset/PENGWIN_2D/val/output/images/x-ray/101_0075.tif"))
+    pred_mask = load_mask_from_folder(location=Path("/home/yudi/PycharmProjects/PENGWIN_dataset/tmp"))
+    gt_mask = load_masks(Path("/home/yudi/Downloads/7ec4ecb6-ef68-469e-b8fd-d839b261d540.tif"))
     metrics_single_case = evaluate_2d_single_case(gt_mask, pred_mask, verbose=True)
+

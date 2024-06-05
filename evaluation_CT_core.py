@@ -106,7 +106,7 @@ def extract_surface_points(volume, label, pixel_spacing, sample_size=10000):
 def calculate_sphere_radius(volume, label):
     points = np.argwhere(volume == label)
     if points.size == 0:
-        return np.inf, np.inf  # Return inf if no points exist
+        return np.inf  # Return inf if no points exist
     center = np.mean(points, axis=0)
     radii = np.linalg.norm(points - center, axis=1)
     radius = np.max(radii)
@@ -142,12 +142,16 @@ def evaluate_anatomical_segmentation(gt_volume, pred_volume, spacing):
     for bone, label_range in anatomical_ranges.items():
         gt_mask = np.isin(gt_volume, label_range)
         pred_mask = np.isin(pred_volume, label_range)
+        iou = calculate_3d_iou(gt_mask, pred_mask)
         gt_points = extract_surface_points(gt_mask, 1, spacing)
         pred_points = extract_surface_points(pred_mask, 1, spacing)
-        iou = calculate_3d_iou(gt_mask, pred_mask)
-        hd95 = calculate_3d_hd95_from_points(gt_points, pred_points)
-        assd = calculate_3d_assd_from_points(gt_points, pred_points)
-
+        if pred_points.size:
+            hd95 = calculate_3d_hd95_from_points(gt_points, pred_points)
+            assd = calculate_3d_assd_from_points(gt_points, pred_points)
+        else:
+            radius = calculate_sphere_radius(gt_mask,1)
+            hd95 = 2 * radius
+            assd = radius
         results[bone] = (iou, hd95, assd)
 
     return results
@@ -225,3 +229,4 @@ if __name__ == "__main__":
     pred_volume = load_image_file(location=Path("/home/yudi/PycharmProjects/PENGWIN_dataset/prediction"))
     spacing, gt_volume = load_gt_label_and_spacing(Path("/home/yudi/PycharmProjects/PENGWIN_dataset/ground_truth/107.mha"))
     metrics_single_case = evaluate_3d_single_case(gt_volume, pred_volume, spacing, verbose = True)
+
